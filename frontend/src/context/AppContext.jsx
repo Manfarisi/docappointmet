@@ -401,41 +401,46 @@ const AppContextProvider = (props) => {
         }
     }
 
-    const register = async (email, password,phone, fullName, role = 'patient') => {
-    setLoading(true)
-    try {
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            phone,
-            options: { data: { full_name: fullName, role } }
-        })
-        if (error) throw error
+    const register = async (email, password, phone, fullName, role = 'patient') => {
+        setLoading(true)
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        role,
+                        phone
+                    }
+                }
+            })
+            if (error) throw error
 
-        // ← Tambahkan ini: insert ke public.users manual
-        if (data.user) {
-            const { error: profileError } = await supabase
-                .from('users')
-                .insert([{
-                    id:        data.user.id,
-                    email:     email,
-                    full_name: fullName,
-                    phone:     phone,
-                    role:      role
-                }])
+            // Insert patient profile into public.users for role-based queries
+            if (data.user) {
+                const { error: profileError } = await supabase
+                    .from('users')
+                    .insert([{
+                        id:        data.user.id,
+                        email:     email,
+                        full_name: fullName,
+                        phone:     phone || null,
+                        role:      role,
+                        is_active: true
+                    }])
 
-            // Tidak throw, biarkan lanjut meski insert gagal
-            if (profileError) console.warn('profile insert:', profileError.message)
+                if (profileError) console.warn('profile insert:', profileError.message)
+            }
+
+            return { success: true, data }
+        } catch (error) {
+            console.error('register:', error.message)
+            return { success: false, error: error.message }
+        } finally {
+            setLoading(false)
         }
-
-        return { success: true, data }
-    } catch (error) {
-        console.error('register:', error.message)
-        return { success: false, error: error.message }
-    } finally {
-        setLoading(false)
     }
-}
 
     const logout = async () => {
         setLoading(true)

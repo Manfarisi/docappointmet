@@ -3,8 +3,8 @@ import { AppContext } from '../../context/AppContext'
 import { supabase } from '../../utils/supabaseClient'
 
 const defaultForm = {
-  full_name: '', email: '', phone: '',
-  speciality_id: '', experience_years: 0,
+  full_name: '', email: '', password: '', confirmPassword: '', phone: '',
+  speciality_id: '', experience_years: 0, consultation_fee: 0,
   bio: '', avatar_url: ''
 }
 
@@ -77,14 +77,31 @@ const AdminDoctors = () => {
     if (!formData.full_name || !formData.email || !formData.speciality_id) {
       setError('Nama, email, dan spesialitas wajib diisi.'); return
     }
+    if (!isEditing) {
+      if (!formData.password) {
+        setError('Password dokter wajib diisi saat menambahkan dokter.'); return
+      }
+      if (formData.password.length < 8) {
+        setError('Password minimal 8 karakter.'); return
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError('Password dan konfirmasi password tidak cocok.'); return
+      }
+    }
+
     try {
       let avatarUrl = formData.avatar_url
       if (avatarFile) avatarUrl = await uploadAvatar(avatarFile)
       const payload = {
-        full_name: formData.full_name, email: formData.email,
-        phone: formData.phone, speciality_id: formData.speciality_id,
+        full_name: formData.full_name,
+        email: formData.email,
+        phone: formData.phone,
+        speciality_id: formData.speciality_id,
         experience_years: Number(formData.experience_years) || 0,
-        bio: formData.bio, avatar_url: avatarUrl,
+        consultation_fee: Number(formData.consultation_fee) || 0,
+        bio: formData.bio,
+        avatar_url: avatarUrl,
+        ...(isEditing ? {} : { password: formData.password })
       }
       const result = await (isEditing ? updateDoctor(editingId, payload) : createDoctor(payload))
       if (result.success) {
@@ -98,10 +115,16 @@ const AdminDoctors = () => {
 
   const handleEdit = (doctor) => {
     setFormData({
-      full_name: doctor.full_name, email: doctor.email,
-      phone: doctor.phone ?? '', speciality_id: doctor.speciality_id?.id || '',
+      full_name: doctor.full_name,
+      email: doctor.email,
+      password: '',
+      confirmPassword: '',
+      phone: doctor.phone ?? '',
+      speciality_id: doctor.speciality_id?.id || '',
       experience_years: doctor.experience_years ?? 0,
-      bio: doctor.bio ?? '', avatar_url: doctor.avatar_url ?? ''
+      consultation_fee: doctor.consultation_fee ?? 0,
+      bio: doctor.bio ?? '',
+      avatar_url: doctor.avatar_url ?? ''
     })
     setAvatarPreview(doctor.avatar_url ?? '')
     setAvatarFile(null); setEditingId(doctor.id)
@@ -199,20 +222,42 @@ const AdminDoctors = () => {
                       onChange={e => setFormData(p => ({ ...p, [key]: e.target.value }))} />
                   </div>
                 ))}
-
-                {/* Speciality */}
                 <div className='flex flex-col gap-1.5'>
                   <label className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>Speciality *</label>
-                  <select
-                    className='border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition bg-white'
-                    value={formData.speciality_id}
-                    onChange={e => setFormData(p => ({ ...p, speciality_id: e.target.value }))}>
-                    <option value=''>Select Speciality</option>
-                    {specialities.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  <select value={formData.speciality_id}
+                    onChange={e => setFormData(p => ({ ...p, speciality_id: e.target.value }))}
+                    className='border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition'>
+                    <option value=''>Choose speciality</option>
+                    {specialities.map(spec => (
+                      <option key={spec.id} value={spec.id}>{spec.name}</option>
+                    ))}
                   </select>
                 </div>
-
-                {/* Experience */}
+                <div className='flex flex-col gap-1.5'>
+                  <label className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>Consultation Fee</label>
+                  <input type='number' min='0' placeholder='0'
+                    className='border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition'
+                    value={formData.consultation_fee}
+                    onChange={e => setFormData(p => ({ ...p, consultation_fee: e.target.value }))} />
+                </div>
+                {!isEditing && (
+                  <>
+                    <div className='flex flex-col gap-1.5'>
+                      <label className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>Password *</label>
+                      <input type='password' placeholder='Password untuk login dokter'
+                        className='border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition'
+                        value={formData.password}
+                        onChange={e => setFormData(p => ({ ...p, password: e.target.value }))} />
+                    </div>
+                    <div className='flex flex-col gap-1.5'>
+                      <label className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>Confirm Password *</label>
+                      <input type='password' placeholder='Confirm password'
+                        className='border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition'
+                        value={formData.confirmPassword}
+                        onChange={e => setFormData(p => ({ ...p, confirmPassword: e.target.value }))} />
+                    </div>
+                  </>
+                )}
                 <div className='flex flex-col gap-1.5'>
                   <label className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>Experience (Years)</label>
                   <input type='number' min='0'

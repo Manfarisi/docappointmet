@@ -6,6 +6,7 @@ const Login = () => {
   const [state, setState] = useState('Sign Up')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
 
@@ -15,8 +16,11 @@ const Login = () => {
   // Redirect based on user role
   useEffect(() => {
     if (user) {
-      if (user.user_metadata?.role === 'admin') {
+      const role = user.user_metadata?.role
+      if (role === 'admin') {
         navigate('/admin/doctors')
+      } else if (role === 'doctor') {
+        navigate('/doctor/appointments')
       } else {
         navigate('/')
       }
@@ -40,7 +44,7 @@ const Login = () => {
     try {
       let result
       if (state === 'Sign Up') {
-        result = await register(email, password, name)
+        result = await register(email, password, phone, name)
       } else {
         result = await login(email, password)
       }
@@ -50,6 +54,8 @@ const Login = () => {
         const userRole = result.data?.user?.user_metadata?.role
         if (userRole === 'admin') {
           navigate('/admin/doctors')
+        } else if (userRole === 'doctor') {
+          navigate('/doctor/appointments')
         } else {
           navigate('/')
         }
@@ -86,6 +92,21 @@ const Login = () => {
             </div>
         }
 
+            {
+          state === "Sign Up" && (
+            <div className='w-full'>
+              <p>Phone Number</p>
+              <input
+                className='border border-zinc-300 rounded w-full p-2 mt-1'
+                type="text"
+                onChange={(e)=>setPhone(e.target.value)}
+                value={phone}
+                required
+              />
+            </div>
+          )
+        }
+
         <div className='w-full'>
           <p>Email</p>
           <input
@@ -107,6 +128,8 @@ const Login = () => {
             required
           />
         </div>
+
+    
 
         <button
           type="submit"

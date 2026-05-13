@@ -1,79 +1,123 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AppContext } from '../context/AppContext'
 import RelatedDoctors from '../components/RelatedDoctors'
 
 const Appointment = () => {
+  const { docId } = useParams()
+  const navigate = useNavigate()
+  const {
+    user,
+    doctors,
+    currencySymbol,
+    createAppointment,
+    appointments
+  } = useContext(AppContext)
 
-  const {docId} = useParams()
-  const {doctors, currencySymbol} = useContext(AppContext)
   const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+  const formatTime = (val) => val.replace('.', ':')
+
 
   const [docInfo, setDocInfo] = useState(null)
   const [docSlots, setDocSlots] = useState([])
   const [slotIndex, setSlotIndex] = useState(0)
   const [slotTime, setSlotTime] = useState('')
+  const [notes, setNotes] = useState('')
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
 
-  const fetchDocInfo = async () =>{
+  const fetchDocInfo = async () => {
     const docInfo = doctors.find(doc => doc._id === docId)
     setDocInfo(docInfo)
   }
 
-  const getAvailableSlots = async () =>{
+  const getAvailableSlots = async () => {
     setDocSlots([])
 
     // getting current date
     let today = new Date()
 
-    for(let i = 0 ; i < 7; i++){
-      // getting date with index
+    for (let i = 0; i < 7; i++) {
       let currentDate = new Date(today)
       currentDate.setDate(today.getDate() + i)
 
-      // setting end time of the date with index
-      let endTime = new Date()
-      endTime.setDate(today.getDate()+ i)
-      endTime.setHours(21,0,0,0)
+      let endTime = new Date(today)
+      endTime.setDate(today.getDate() + i)
+      endTime.setHours(21, 0, 0, 0)
 
-      // setting hours
-      if(today.getDate() === currentDate.getDate()){
+      if (today.getDate() === currentDate.getDate()) {
         currentDate.setHours(currentDate.getHours() > 10 ? currentDate.getHours() + 1 : 10)
         currentDate.setMinutes(currentDate.getMinutes() > 30 ? 30 : 0)
-      }else{
+      } else {
         currentDate.setHours(10)
         currentDate.setMinutes(0)
       }
 
       let timeSlots = []
 
-        while(currentDate < endTime){
-          let formattedTime = currentDate.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
-          
-          // add slot to array
-          timeSlots.push({
-            datetime: new Date(currentDate),
-            time: formattedTime
-          })
+      while (currentDate < endTime) {
+let formattedTime = currentDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+        timeSlots.push({
+          datetime: new Date(currentDate),
+          time: formattedTime
+        })
+        currentDate.setMinutes(currentDate.getMinutes() + 30)
+      }
 
-          // Increment current time by 30 minutes
-          currentDate.setMinutes(currentDate.getMinutes() + 30)
-        }   
-
-        setDocSlots(prev => ([...prev, timeSlots]))
+      setDocSlots(prev => ([...prev, timeSlots]))
     }
   }
 
-  useEffect(()=>{
+  const handleBooking = async () => {
+    setError('')
+    setMessage('')
+
+    if (!user) {
+      setError('Please login before booking an appointment.')
+      return
+    }
+
+    if (!slotTime || !docSlots[slotIndex] || docSlots[slotIndex].length === 0) {
+      setError('Please select a valid time slot.')
+      return
+    }
+
+    const bookingDate = docSlots[slotIndex][0].datetime.toISOString().slice(0, 10)
+
+    const payload = {
+      patient_id: user.id,
+      doctor_id: docId,
+      appointment_date: bookingDate,
+      appointment_time: slotTime,
+      notes: notes.trim() || null,
+      status: 'pending',
+    }
+
+    const result = await createAppointment(payload)
+    if (result.success) {
+      setMessage('Appointment booked successfully!')
+      setNotes('')
+      navigate('/my-appointments')
+    } else {
+      setError(result.error || 'Failed to book appointment. Please try another slot.')
+    }
+  }
+
+  useEffect(() => {
     fetchDocInfo()
-  },[doctors,docId])
+  }, [doctors, docId])
 
-  useEffect(()=>{
+  useEffect(() => {
+    if (docInfo) {
       getAvailableSlots()
-  },[docInfo])
+    }
+  }, [docInfo])
 
-  useEffect(()=>{
-    console.log(docSlots)
-  },[docSlots])
+  useEffect(() => {
+    if (docSlots[slotIndex] && docSlots[slotIndex][0]) {
+      setSlotTime(docSlots[slotIndex][0].time)
+    }
+  }, [docSlots, slotIndex])
 
 
   return docInfo && (
@@ -129,14 +173,43 @@ const Appointment = () => {
 
     <div className='flex items-center gap-3 w-full overflow-x-scroll mt-4'>
       {
-        docSlots.length && docSlots[slotIndex].map((item,index)=>(
-          <p onClick={()=>setSlotTime(item.time)} className={`text-sm flex shrink-0 px-5 py-2 rounded-full cursor-pointer ${item.time === slotTime ? 'bg-green-400 text-black': 'text-gray-700 border border-gray-600'}`} key={index}>
+        docSlots.length && docSlots[slotIndex]?.map((item,index)=>(
+          <p
+            onClick={() => setSlotTime(item.time)}
+            className={`text-sm flex shrink-0 px-5 py-2 rounded-full cursor-pointer ${item.time === slotTime ? 'bg-green-400 text-black' : 'text-gray-700 border border-gray-600'}`}
+            key={index}
+          >
             {item.time.toLowerCase()}
           </p>
         ))
       }
     </div>
-    <button className='bg-green-500 text-white text-sm  px-14 py-3 rounded-full my-6'>Book an Appointment</button>
+
+    <div className='mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-6 space-y-4'>
+      <div>
+        <label className='block text-sm font-medium text-slate-700'>Notes for doctor</label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className='mt-2 w-full rounded-3xl border border-slate-300 bg-white p-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-green-400'
+          rows={4}
+          placeholder='Enter any symptoms or questions you want to discuss.'
+        />
+      </div>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='text-sm text-slate-600'>
+          Selected slot: <span className='font-semibold text-slate-900'>{slotTime || 'None'}</span>
+        </div>
+        <button
+          onClick={handleBooking}
+          className='inline-flex items-center justify-center rounded-full bg-green-500 px-8 py-3 text-sm font-semibold text-white hover:bg-green-600 transition'
+        >
+          Book Appointment
+        </button>
+      </div>
+      {error && <p className='text-sm text-red-600'>{error}</p>}
+      {message && <p className='text-sm text-emerald-600'>{message}</p>}
+    </div>
     </div>
     {/* Related Doctors */}
     <RelatedDoctors docId={docId} speciality={docInfo.speciality}/>

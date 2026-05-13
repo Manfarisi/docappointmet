@@ -34,6 +34,11 @@ const Navbar = () => {
                     <li className='py-1'>CONTACT</li>
                     <hr className='border-none outline-none h-0.5 bg-green-500 w-3/5 m-auto hidden' />
                 </NavLink>
+                {user?.user_metadata?.role === 'doctor' && (
+                  <NavLink to='/doctor/appointments'>
+                    <li className='py-1 text-green-600'>DOCTOR</li>
+                  </NavLink>
+                )}
                 {user?.user_metadata?.role === 'admin' && (
                   <NavLink to='/admin/doctors'>
                     <li className='py-1 text-red-600'>ADMIN</li>
@@ -72,6 +77,9 @@ const Navbar = () => {
                     <NavLink onClick={()=>setShowMenu(false)} to='/doctors'><p className='px-4 py2 rounded inline-block'> ALL DOCTORS</p></NavLink>
                     <NavLink onClick={()=>setShowMenu(false)} to='/about'><p className='px-4 py2 rounded inline-block'>ABOUT</p></NavLink>
                     <NavLink onClick={()=>setShowMenu(false)} to='/contact'><p className='px-4 py2 rounded inline-block'>CONTACT</p></NavLink>
+                    {user?.user_metadata?.role === 'doctor' && (
+                      <NavLink onClick={()=>setShowMenu(false)} to='/doctor/appointments'><p className='px-4 py2 rounded inline-block text-green-600'>DOCTOR</p></NavLink>
+                    )}
                     {user?.user_metadata?.role === 'admin' && (
                       <NavLink onClick={()=>setShowMenu(false)} to='/admin/doctors'><p className='px-4 py2 rounded inline-block text-red-600'>ADMIN</p></NavLink>
                     )}

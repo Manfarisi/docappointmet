@@ -8,6 +8,7 @@ import Contact from './pages/Contact'
 import MyProfile from './pages/MyProfile'
 import MyAppointments from './pages/MyAppointments'
 import Appointment from './pages/Appointment'
+import DoctorAppointments from './pages/doctor/DoctorAppointments'
 import AdminDoctors from './pages/admin/AdminDoctors'
 import ProtectedRoute from './components/ProtectedRoute'
 import UserLayout from './layouts/UserLayout'
@@ -26,6 +27,11 @@ const App = () => {
         <Route path='my-profile' element={<MyProfile />} />
         <Route path='my-appointments' element={<MyAppointments />} />
         <Route path='appointment/:docId' element={<Appointment />} />
+        <Route path='doctor/appointments' element={
+          <ProtectedRoute requiredRole='doctor'>
+            <DoctorAppointments />
+          </ProtectedRoute>
+        } />
       </Route>
 
       <Route path='/admin' element={
